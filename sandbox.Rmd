@@ -1,0 +1,181 @@
+
+
+```{r setup, include=F}
+library(DBI)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+conn <- dbConnect(RSQLite::SQLite(), 'chat.db')
+contacts <- read.csv('contacts.csv', check.names=F) %>%
+  select(name=`Display Name`, `Home Phone`, `Mobile Phone`, `E-mail Address`) %>%
+  pivot_longer(
+    c(`Home Phone`, `Mobile Phone`, `E-mail Address`),
+    names_to=NULL,
+    values_to='phone'
+  ) %>%
+  filter(
+    phone != ''
+  ) %>%
+  mutate(
+    phone=ifelse(
+      str_detect(phone, '@'),
+      phone,
+      phone %>%
+        str_remove_all('[ ]|[)]|[(]|[-]|[+]') %>%
+        paste0('+1', .) %>%
+        str_replace('\\+11', '+1')
+    )
+  )
+```
+
+
+```{r}
+chat <- dbGetQuery(conn, '
+SELECT 
+  ROWID AS chat_id,
+  guid,
+  style,
+  account_id,
+  chat_identifier,
+  service_name,
+  room_name,
+  account_login,
+  last_addressed_handle,
+  display_name,
+  group_id,
+  is_filtered,
+  successful_query,
+  last_read_message_timestamp,
+  original_group_id
+FROM 
+  chat
+')
+
+chat_message_join <- dbGetQuery(conn, '
+SELECT 
+  chat_id,
+  message_id
+FROM 
+  chat_message_join
+')
+
+attachment <- dbGetQuery(conn, '
+SELECT 
+  ROWID AS attachment_id,
+  guid,
+  mime_type,
+  is_outgoing,
+  total_bytes
+FROM
+  attachment
+')
+
+chat_handle_join <- dbGetQuery(conn, '
+SELECT 
+  chat_id, 
+  handle_id 
+FROM 
+  chat_handle_join
+')
+
+handle <- dbGetQuery(conn, '
+SELECT
+  ROWID AS handle_id,
+  id
+FROM
+  handle
+') %>%
+  add_row(handle_id=0, id='+14109922955')
+
+message <- dbGetQuery(conn, '
+SELECT 
+  text,
+  ROWID AS message_id,
+  handle_id,
+  date,
+  is_from_me,
+  group_title,
+  other_handle
+FROM 
+  message
+WHERE
+  account NOT LIKE "%5carpenter@comcast.net%"
+') %>%
+  mutate(
+    date=as.POSIXct(date/1e9, origin='2001-01-01')
+  )
+```
+
+```{r}
+is_reaction <- function(x){
+  str_detect(x, '”')
+}
+```
+
+```{r}
+dt %>%
+  filter(
+    name == 'Joe Madera'
+  )
+```
+
+
+
+```{r}
+message %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  left_join(handle, 'handle_id') %>%
+  left_join(contacts, by=c('id'='phone')) %>%
+  filter(
+    date >= '2021-08-20',
+    date <= '2022-05-15',
+    #is_reaction(text)
+  ) %>%
+  mutate(
+    is_from_me=as.logical(is_from_me)
+  ) %>%
+  count(is_from_me, name, id, handle_id) %>%
+  pivot_wider(
+    names_from = is_from_me,
+    values_from=n
+  ) %>%
+  select(name, sent=`TRUE`, received=`FALSE`) %>%
+  mutate(
+    across(c(sent, received), ~ifelse(is.na(.x), 0, .x)),
+    total=sent+received
+  ) %>%
+  arrange(-total)
+```
+
+
+```{r}
+message %>%
+  filter(
+    str_detect(text, 'as one does')
+  ) %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  left_join(chat_handle_join, by = c("chat_id"))
+  
+```
+
+
+
+
+```{r}
+dt <- message %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  left_join(handle, 'handle_id') %>%
+  left_join(contacts, by=c('id'='phone'))
+  
+
+dt %>%
+  group_by(chat_id) %>%
+  filter(
+    str_detect(text, '\\?') | lag(str_detect(text, '\\?'))
+  ) 
+```
+
+
+

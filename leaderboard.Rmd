@@ -1,0 +1,92 @@
+
+```{r}
+dt <- message %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  filter(
+    !is_reaction(text)
+  ) %>%
+  mutate(
+    is_from_me=as.logical(is_from_me)
+  )
+
+gc_texts <- dt %>%
+  filter(
+    handle_id == 0
+  ) %>%
+  select(-handle_id) %>%
+  left_join(chat_handle_join, by = c("chat_id"))
+
+dt <- dt %>%
+  filter(
+    handle_id != 0
+  ) %>%
+  rbind(gc_texts) %>%
+  left_join(handle, 'handle_id') %>%
+  left_join(contacts, by=c('id'='phone'))
+```
+
+
+# Senior Year
+```{r}
+dt %>%
+  filter(
+    date >= '2021-08-20',
+    date <= '2022-05-15'
+  ) %>%
+  count(is_from_me, name, id, handle_id) %>%
+  pivot_wider(
+    names_from = is_from_me,
+    values_from=n
+  ) %>%
+  select(name, sent=`TRUE`, received=`FALSE`) %>%
+  mutate(
+    across(c(sent, received), ~ifelse(is.na(.x), 0, .x)),
+    total=sent+received,
+    pct_me=sent/total
+  ) %>%
+  arrange(-received)
+```
+
+
+# Junior Year
+```{r}
+dt %>%
+  filter(
+    date >= '2020-08-14',
+    date <= '2021-05-12'
+  ) %>%
+  count(is_from_me, name, id, handle_id) %>%
+  pivot_wider(
+    names_from = is_from_me,
+    values_from=n
+  ) %>%
+  select(name, sent=`TRUE`, received=`FALSE`) %>%
+  mutate(
+    across(c(sent, received), ~ifelse(is.na(.x), 0, .x)),
+    total=sent+received
+  ) %>%
+  arrange(-total)
+```
+
+# In a time period
+```{r}
+dt %>%
+  filter(
+    date >= '2021-08-20',
+    date <= '2022-05-15'
+  ) %>%
+  mutate(
+    date=lubridate::round_date(date, 'day')
+  ) %>%
+  count(is_from_me, name, date, id, handle_id) %>%
+  pivot_wider(
+    names_from = is_from_me,
+    values_from=n
+  ) %>%
+  select(name, date, sent=`TRUE`, received=`FALSE`) %>%
+  mutate(
+    across(c(sent, received), ~ifelse(is.na(.x), 0, .x)),
+    total=sent+received
+  ) %>%
+  arrange(-total)
+```

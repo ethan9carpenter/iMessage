@@ -1,0 +1,64 @@
+
+```{r}
+plot_dt <- dbGetQuery(
+  conn,
+  '
+  SELECT
+    text,
+    chat_id,
+    handle.id AS contact_id
+  FROM
+    message 
+    LEFT JOIN chat_message_join ON message.rowid = chat_message_join.message_id
+    LEFT JOIN handle ON message.handle_id = handle.rowid
+  WHERE
+    account NOT LIKE "%5carpenter@comcast.net%"
+  '
+) %>%
+  left_join(contacts, by=c('contact_id'='phone'))
+
+
+
+plot_dt <- plot_dt %>%
+  filter(
+    chat_id == 700
+  ) %>%
+  mutate(
+    n_words=map_int(str_split(text, ' '), length)
+  ) %>%
+  group_by(name) %>%
+  summarize(
+    avg_words=mean(n_words),
+    n=n(),
+    .groups='drop'
+  )
+
+plot_dt %>%
+  ggplot(aes(reorder(name, -n), n)) +
+  geom_bar(stat='identity') +
+  theme(
+    axis.text.x = element_text(angle=-45)
+  ) +
+  labs(
+    x='Name',
+    y='Number of Messages',
+    caption='Excluding reactions'
+  )
+```
+
+```{r}
+message %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  left_join(handle, 'handle_id') %>%
+  left_join(contacts, by=c('id'='phone')) %>%
+  filter(
+    chat_id == 700,
+    !is_reaction(text)
+  ) %>%
+  mutate(
+    date=as.Date(date)
+  ) %>%
+  ggplot(aes(date)) +
+  geom_histogram()
+```
+

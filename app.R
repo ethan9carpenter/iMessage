@@ -180,6 +180,13 @@ ui <- fluidPage(
             choices=unique(group_chat_dt$name),
             multiple=T
           ),
+          switchInput(
+            'exclusive_group_chat_switch',
+            'Exclusive?',
+            onLabel='Yes',
+            offLabel='No',
+            value=F
+          ),
           plotOutput('group_chat_plot')
         )
       )
@@ -247,7 +254,8 @@ server <- function(input, output) {
       filter(
         date >= input$date_slider[1],
         date <= input$date_slider[2],
-        all(input$group_chat_people %in% name)
+        all(input$group_chat_people %in% name),
+        !input$exclusive_group_chat_switch | all(name %in% input$group_chat_people)
       ) %>%
       ungroup() %>%
       group_by(name) %>%

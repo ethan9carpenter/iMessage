@@ -115,9 +115,27 @@ is_reaction <- function(x){
 ```
 
 ```{r}
-dt %>%
+message %>%
+  left_join(chat_message_join, by=c('message_id')) %>%
+  left_join(handle, 'handle_id') %>%
+  left_join(contacts, by=c('id'='phone')) %>%
+  mutate(
+    words=map_int(str_split(text, ' '), length)
+  ) %>%
   filter(
-    name == 'Joe Madera'
+    !is_reaction(text)
+  ) %>%
+  select(words, everything()) %>%
+  arrange(-words) %>%
+  group_by(name, is_from_me) %>%
+  summarize(
+    avg_words=mean(words),
+    n=n(),
+    .groups='drop'
+  ) %>%
+  arrange(-avg_words) %>%
+  filter(
+    n >= 200
   )
 ```
 

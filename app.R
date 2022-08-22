@@ -1,8 +1,8 @@
-library(shiny)
-library(tidyverse)
-library(DBI)
-library(DT)
-library(shinyWidgets)
+library(shiny, warn.conflicts = F)
+library(tidyverse, warn.conflicts = F)
+library(DBI, warn.conflicts = F)
+library(DT, warn.conflicts = F)
+library(shinyWidgets, warn.conflicts = F)
 options(shiny.maxRequestSize = 256*1024^2)
 
 file.copy('~/Library/Messages/chat.db', 'chat.db', overwrite = T)
